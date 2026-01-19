@@ -14,14 +14,19 @@ class ConfigManager:
         """Initialize config manager.
 
         Args:
-            config_file: Optional path to config file. Defaults to ~/.config/bash.ai/config.json
+            config_file: Optional path to config file. Defaults to ~/.config/bash.ai/commands.json
         """
         if config_file:
             self.config_path = Path(config_file)
         else:
-            config_dir = Path.home() / ".config" / "bash.ai"
-            config_dir.mkdir(parents=True, exist_ok=True)
-            self.config_path = config_dir / "config.json"
+            # Try project config first, then user config
+            project_config = Path(__file__).parent.parent.parent / "config" / "commands.json"
+            if project_config.exists():
+                self.config_path = project_config
+            else:
+                config_dir = Path.home() / ".config" / "bash.ai"
+                config_dir.mkdir(parents=True, exist_ok=True)
+                self.config_path = config_dir / "commands.json"
 
         self._config = self._load_config()
 
