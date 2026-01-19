@@ -16,9 +16,7 @@ GLOBAL_ALLOWLIST: list[str] | None = None
 GLOBAL_BLACKLIST: list[str] | None = None
 
 
-def set_allowlist_blacklist(
-    allowlist: list[str] | None = None, blacklist: list[str] | None = None
-):
+def set_allowlist_blacklist(allowlist: list[str] | None = None, blacklist: list[str] | None = None):
     """Set the global allowlist and blacklist for command validation.
 
     Args:
@@ -80,7 +78,10 @@ def execute_bash(cmd: str, tool_context: ToolContext | None = None) -> dict:
     if GLOBAL_BLACKLIST:
         for blacklisted in GLOBAL_BLACKLIST:
             if blacklisted in base_cmd or base_cmd in blacklisted:
-                blocked_result: dict[str, Any] = {"status": "blocked", "message": f"Command '{base_cmd}' is blacklisted"}
+                blocked_result: dict[str, Any] = {
+                    "status": "blocked",
+                    "message": f"Command '{base_cmd}' is blacklisted",
+                }
                 log_tool_call("execute_bash", {"cmd": cmd}, blocked_result, success=False)
                 return blocked_result
 
