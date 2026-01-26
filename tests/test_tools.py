@@ -11,12 +11,14 @@ from flourish.tools.tools import (
     add_to_blacklist,
     execute_bash,
     get_bash_tools,
+    get_current_datetime,
     get_user,
     is_in_allowlist,
     is_in_blacklist,
     list_allowlist,
     list_blacklist,
-    read_history,
+    read_bash_history,
+    read_conversation_history,
     remove_from_allowlist,
     remove_from_blacklist,
     set_allowlist_blacklist,
@@ -196,46 +198,46 @@ def test_is_in_blacklist(reset_globals):
     assert result["in_blacklist"] is False
 
 
-def test_read_history_nonexistent(tmp_path, monkeypatch):
-    """Test reading history when file doesn't exist."""
+def test_read_bash_history_nonexistent(tmp_path, monkeypatch):
+    """Test reading bash history when file doesn't exist."""
     # Create the config directory structure but no history file
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
-    result = read_history()
+
+    result = read_bash_history()
     assert result["status"] == "success"
     assert result["count"] == 0
     assert result["entries"] == []
     assert "does not exist" in result["message"]
 
 
-def test_read_history_empty_file(tmp_path, monkeypatch):
-    """Test reading history from empty file."""
+def test_read_bash_history_empty_file(tmp_path, monkeypatch):
+    """Test reading bash history from empty file."""
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
     history_file.touch()
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
-    result = read_history()
+
+    result = read_bash_history()
     assert result["status"] == "success"
     assert result["count"] == 0
     assert result["entries"] == []
 
 
-def test_read_history_with_commands(tmp_path, monkeypatch):
-    """Test reading history with commands."""
+def test_read_bash_history_with_commands(tmp_path, monkeypatch):
+    """Test reading bash history with commands."""
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Write some history entries (one per line, as prompt-toolkit format)
     history_file.write_text("ls -la\ngit status\ncd ~/projects\necho hello\n")
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
-    result = read_history()
+
+    result = read_bash_history()
     assert result["status"] == "success"
     assert result["count"] == 4
     assert len(result["entries"]) == 4
@@ -245,34 +247,34 @@ def test_read_history_with_commands(tmp_path, monkeypatch):
     assert "echo hello" in result["entries"]
 
 
-def test_read_history_with_limit(tmp_path, monkeypatch):
-    """Test reading history with limit."""
+def test_read_bash_history_with_limit(tmp_path, monkeypatch):
+    """Test reading bash history with limit."""
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Write 10 history entries
     commands = [f"command{i}\n" for i in range(10)]
     history_file.write_text("".join(commands))
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
-    result = read_history(limit=5)
+
+    result = read_bash_history(limit=5)
     assert result["status"] == "success"
     assert result["count"] == 5
     assert len(result["entries"]) == 5
 
 
-def test_read_history_removes_duplicates(tmp_path, monkeypatch):
-    """Test that read_history removes duplicate commands."""
+def test_read_bash_history_removes_duplicates(tmp_path, monkeypatch):
+    """Test that read_bash_history removes duplicate commands."""
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Write duplicate commands
     history_file.write_text("ls\nls\ngit status\nls\necho test\n")
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
-    result = read_history()
+
+    result = read_bash_history()
     assert result["status"] == "success"
     # Should have unique commands only (most recent first, so duplicates removed)
     assert result["count"] == 3
@@ -283,39 +285,155 @@ def test_read_history_removes_duplicates(tmp_path, monkeypatch):
     assert result["entries"].count("ls") == 1
 
 
-def test_read_history_limit_validation(tmp_path, monkeypatch):
-    """Test that read_history validates limit parameter."""
+def test_read_bash_history_limit_validation(tmp_path, monkeypatch):
+    """Test that read_bash_history validates limit parameter."""
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
     history_file.write_text("command1\ncommand2\n")
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
+
     # Test with limit too high (should cap at 1000)
-    result = read_history(limit=2000)
+    result = read_bash_history(limit=2000)
     assert result["status"] == "success"
     # Should still work, just capped
-    
+
     # Test with limit too low (should be at least 1)
-    result = read_history(limit=0)
+    result = read_bash_history(limit=0)
     assert result["status"] == "success"
     # Should still work, just minimum 1
 
 
-def test_read_history_permission_error(tmp_path, monkeypatch):
-    """Test read_history handles permission errors gracefully."""
+def test_read_bash_history_permission_error(tmp_path, monkeypatch):
+    """Test read_bash_history handles permission errors gracefully."""
     history_file = tmp_path / ".config" / "flourish" / "history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
     history_file.write_text("test\n")
     history_file.chmod(0o000)  # Remove all permissions
-    
+
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
-    
+
     try:
-        result = read_history()
+        result = read_bash_history()
         # Should handle error gracefully
         assert result["status"] == "error"
         assert "Permission" in result["message"] or "permission" in result["message"].lower()
     finally:
         # Restore permissions for cleanup
         history_file.chmod(0o644)
+
+
+def test_read_conversation_history_nonexistent(tmp_path, monkeypatch):
+    """Test reading conversation history when logs don't exist."""
+    logs_dir = tmp_path / ".config" / "flourish" / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = read_conversation_history()
+    assert result["status"] == "success"
+    assert result["count"] == 0
+    assert "No session logs" in result["message"]
+
+
+def test_read_conversation_history_empty_logs_dir(tmp_path, monkeypatch):
+    """Test reading conversation history from empty logs directory."""
+    logs_dir = tmp_path / ".config" / "flourish" / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = read_conversation_history()
+    assert result["status"] == "success"
+    assert result["count"] == 0
+
+
+def test_read_conversation_history_with_entries(tmp_path, monkeypatch):
+    """Test reading conversation history with log entries."""
+    logs_dir = tmp_path / ".config" / "flourish" / "logs"
+    session_dir = logs_dir / "session_2025-01-26_10-00-00"
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    conversation_log = session_dir / "conversation.log"
+    # Write log entries in the format: "timestamp - name - level - JSON_MESSAGE"
+    log_entries = [
+        '2025-01-26 10:00:00 - flourish.conversation - INFO - {"timestamp":"2025-01-26T10:00:00","event":"conversation","role":"user","content":"Hello"}\n',
+        '2025-01-26 10:00:01 - flourish.conversation - INFO - {"timestamp":"2025-01-26T10:00:01","event":"conversation","role":"agent","content":"Hi there!"}\n',
+        '2025-01-26 10:00:02 - flourish.conversation - INFO - {"timestamp":"2025-01-26T10:00:02","event":"tool_call","tool":"execute_bash","parameters":{"cmd":"ls"},"success":true}\n',
+    ]
+    conversation_log.write_text("".join(log_entries))
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = read_conversation_history()
+    assert result["status"] == "success"
+    assert result["count"] == 3
+    assert len(result["entries"]) == 3
+    assert result["session_dir"] == str(session_dir)
+    # Check that entries have expected structure
+    for entry in result["entries"]:
+        assert "timestamp" in entry
+        assert "event" in entry
+        assert "data" in entry
+
+
+def test_read_conversation_history_with_limit(tmp_path, monkeypatch):
+    """Test reading conversation history with limit."""
+    logs_dir = tmp_path / ".config" / "flourish" / "logs"
+    session_dir = logs_dir / "session_2025-01-26_10-00-00"
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    conversation_log = session_dir / "conversation.log"
+    # Write 10 log entries
+    log_entries = []
+    for i in range(10):
+        log_entries.append(
+            f'2025-01-26 10:00:{i:02d} - flourish.conversation - INFO - {{"timestamp":"2025-01-26T10:00:{i:02d}","event":"conversation","role":"user","content":"Message {i}"}}\n'
+        )
+    conversation_log.write_text("".join(log_entries))
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = read_conversation_history(limit=5)
+    assert result["status"] == "success"
+    assert result["count"] == 5
+    assert len(result["entries"]) == 5
+
+
+def test_read_conversation_history_finds_most_recent(tmp_path, monkeypatch):
+    """Test that read_conversation_history finds the most recent session."""
+    logs_dir = tmp_path / ".config" / "flourish" / "logs"
+    # Create two session directories
+    old_session = logs_dir / "session_2025-01-26_09-00-00"
+    old_session.mkdir(parents=True, exist_ok=True)
+    (old_session / "conversation.log").write_text(
+        '2025-01-26 09:00:00 - flourish.conversation - INFO - {"event":"conversation","role":"user","content":"Old message"}\n'
+    )
+
+    new_session = logs_dir / "session_2025-01-26_10-00-00"
+    new_session.mkdir(parents=True, exist_ok=True)
+    (new_session / "conversation.log").write_text(
+        '2025-01-26 10:00:00 - flourish.conversation - INFO - {"event":"conversation","role":"user","content":"New message"}\n'
+    )
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = read_conversation_history()
+    assert result["status"] == "success"
+    assert result["session_dir"] == str(new_session)
+    assert "New message" in str(result["entries"])
+
+
+def test_get_current_datetime():
+    """Test getting current date and time."""
+    result = get_current_datetime()
+    assert result["status"] == "success"
+    assert "iso_timestamp" in result
+    assert "local_datetime" in result
+    assert "date" in result
+    assert "time" in result
+    assert "utc_datetime" in result
+    # Verify format
+    assert len(result["date"]) == 10  # YYYY-MM-DD
+    assert len(result["time"]) == 8  # HH:MM:SS
+    assert "UTC" in result["utc_datetime"]
