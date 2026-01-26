@@ -3,7 +3,7 @@
 # Add this to your ~/.bashrc or ~/.zshrc
 
 # Function to provide AI-powered command suggestions
-_bash_ai_suggest() {
+_flourish_suggest() {
     local command="$1"
     if [ -z "$command" ]; then
         return
@@ -19,7 +19,7 @@ _bash_ai_suggest() {
 }
 
 # Function to enhance command execution with AI
-_bash_ai_enhance() {
+_flourish_enhance() {
     local last_command="$1"
     local exit_code="$2"
 
@@ -37,14 +37,14 @@ _bash_ai_enhance() {
 # Hook into command execution (if supported)
 if [ -n "$BASH_VERSION" ]; then
     # Bash-specific hooks
-    trap '_bash_ai_enhance "$BASH_COMMAND" "$?"' DEBUG 2>/dev/null || true
+    trap '_flourish_enhance "$BASH_COMMAND" "$?"' DEBUG 2>/dev/null || true
 fi
 
 # Create convenient alias
 alias ai='flourish'
 
 # Auto-completion helper
-_bash_ai_complete() {
+_flourish_complete() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if [ "$COMP_CWORD" -eq 1 ]; then
         COMPREPLY=($(compgen -W "--allowlist --blacklist --help --version" -- "$cur"))
@@ -53,7 +53,7 @@ _bash_ai_complete() {
 
 # Register completion (if available)
 if command -v complete &> /dev/null; then
-    complete -F _bash_ai_complete flourish
+    complete -F _flourish_complete flourish
 fi
 
 echo "Flourish integration loaded. Use 'flourish' or 'ai' command."
