@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,9 @@ from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.search import SearchDirection
 from prompt_toolkit.styles import Style
 from pygments.lexers.shell import BashLexer
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.syntax import Syntax
 
 from ..config import get_settings
 from ..config.config_manager import ConfigManager
@@ -140,12 +144,12 @@ def format_prompt(cwd: Path):
     # Build formatted text parts
     parts = []
     parts.append(("ansicyan", display_path))
-    
+
     if git_branch:
         parts.append(("ansimagenta", git_branch))
         if git_status:
             parts.append(("ansiyellow", git_status))
-    
+
     parts.append(("ansigreen", " $ "))
 
     return FormattedText(parts)
@@ -224,6 +228,7 @@ class TerminalApp:
         self.current_dir = Path.cwd()
         self.command_history: list[str] = []
         self.agent_task: asyncio.Task | None = None
+        self.console = Console()
 
         # Set global allowlist/blacklist for tools
         set_allowlist_blacklist(
@@ -353,9 +358,54 @@ class TerminalApp:
             print(error_msg, file=__import__("sys").stderr)
             log_terminal_error(command=cmd, error=str(e), cwd=str(self.current_dir))
 
+    def _format_response(self, response: str):
+        """Format AI response with proper code block rendering."""
+        # Check if response contains code blocks
+        code_block_pattern = r"```(\w+)?\n?(.*?)```"
+        
+        # Find all code blocks
+        matches = list(re.finditer(code_block_pattern, response, re.DOTALL))
+        
+        if not matches:
+            # No code blocks, just print as markdown
+            self.console.print(Markdown(response))
+            return
+        
+        # Process response with code blocks
+        last_end = 0
+        for match in matches:
+            # Print text before code block
+            if match.start() > last_end:
+                text_before = response[last_end:match.start()].strip()
+                if text_before:
+                    self.console.print(Markdown(text_before))
+            
+            # Extract language and code
+            language = match.group(1) or "text"
+            code = match.group(2).strip()
+            
+            # Print code block with syntax highlighting
+            # Use a terminal-friendly theme
+            syntax = Syntax(
+                code,
+                language,
+                theme="one-dark",
+                line_numbers=False,
+                word_wrap=True,
+            )
+            self.console.print(syntax)
+            
+            last_end = match.end()
+        
+        # Print remaining text after last code block
+        if last_end < len(response):
+            text_after = response[last_end:].strip()
+            if text_after:
+                self.console.print(Markdown(text_after))
+
     async def handle_ai_request(self, prompt: str):
         """Handle an AI assistance request."""
-        print("\033[96m🤖 AI is thinking...\033[0m")
+        self.console.print("[cyan]🤖 AI is thinking...[/cyan]")
 
         # Get current allowlist/blacklist
         allowlist = self.current_allowlist if self.current_allowlist else None
@@ -372,17 +422,12 @@ class TerminalApp:
                 blacklisted_commands=blacklist,
             )
 
-            # Display AI response
-            print("\033[96m🤖\033[0m", end=" ")
-            for line in response.split("\n"):
-                if line.strip():
-                    print(f"\033[96m{line}\033[0m")
-                else:
-                    print()
+            # Display AI response with formatting
+            self.console.print("[cyan]🤖[/cyan]", end=" ")
+            self._format_response(response)
 
         except Exception as e:
-            error_msg = f"\033[91m❌ AI Error: {e}\033[0m"
-            print(error_msg, file=__import__("sys").stderr)
+            self.console.print(f"[red]❌ AI Error: {e}[/red]")
 
     async def run(self):
         """Run the terminal application."""
