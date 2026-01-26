@@ -1,10 +1,8 @@
 """Enhanced cd completion plugin with nested directory structure support."""
 
-import os
 from pathlib import Path
-from typing import Any
 
-from prompt_toolkit.completion import Completion, Completer
+from prompt_toolkit.completion import Completer, Completion
 
 
 class CdCompleter(Completer):
@@ -28,7 +26,7 @@ class CdCompleter(Completer):
         Returns:
             List of matching directory paths.
         """
-        directories = []
+        directories: list[Path] = []
         try:
             if not base_path.exists() or not base_path.is_dir():
                 return directories
@@ -50,7 +48,7 @@ class CdCompleter(Completer):
             search_path = base_path
 
             # Navigate through the pattern path
-            for i, part in enumerate(pattern_parts[:-1]):
+            for _i, part in enumerate(pattern_parts[:-1]):
                 if not part:
                     continue
                 # Try to find matching directory
