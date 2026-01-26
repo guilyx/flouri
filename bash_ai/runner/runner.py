@@ -1,6 +1,7 @@
 """Runner for executing agent interactions."""
 
 import asyncio
+import warnings
 
 from google.adk.agents import LiveRequestQueue
 from google.adk.agents.run_config import RunConfig
@@ -12,6 +13,9 @@ from google.genai import types
 from ..agent import get_agent
 from ..config import get_settings
 from ..logging import initialize_session_log, log_conversation
+
+# Suppress experimental warnings from Google ADK
+warnings.filterwarnings("ignore", category=UserWarning, module="google.adk")
 
 
 async def run_agent(

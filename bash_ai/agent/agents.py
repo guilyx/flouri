@@ -53,8 +53,9 @@ def get_agent(
     """
     settings = get_settings()
 
-    # Suppress Gemini via LiteLLM warning
+    # Suppress warnings
     os.environ.setdefault("ADK_SUPPRESS_GEMINI_LITELLM_WARNINGS", "true")
+    os.environ.setdefault("ADK_SUPPRESS_EXPERIMENTAL_WARNINGS", "true")
 
     # Set API key for LiteLLM
     if settings.api_key:
