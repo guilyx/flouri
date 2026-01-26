@@ -14,6 +14,7 @@ from prompt_toolkit.completion import (
     PathCompleter,
     WordCompleter,
 )
+from prompt_toolkit.formatted_text import FormattedText, ANSI
 from prompt_toolkit.history import FileHistory, InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.lexers import PygmentsLexer
@@ -121,8 +122,8 @@ def get_git_status(cwd: Path) -> str:
     return ""
 
 
-def format_prompt(cwd: Path) -> str:
-    """Format the terminal prompt with git info."""
+def format_prompt(cwd: Path):
+    """Format the terminal prompt with git info using prompt_toolkit FormattedText."""
     try:
         home = Path.home()
         try:
@@ -136,23 +137,18 @@ def format_prompt(cwd: Path) -> str:
     git_branch = get_git_branch(cwd)
     git_status = get_git_status(cwd) if git_branch else ""
 
-    # Color codes for terminal
-    reset = "\033[0m"
-    cyan = "\033[36m"
-    green = "\033[32m"
-    yellow = "\033[33m"
-    blue = "\033[34m"
-    magenta = "\033[35m"
-
-    prompt_parts = []
-    prompt_parts.append(f"{cyan}{display_path}{reset}")
+    # Build formatted text parts
+    parts = []
+    parts.append(("ansicyan", display_path))
+    
     if git_branch:
-        prompt_parts.append(f"{magenta}{git_branch}{reset}")
+        parts.append(("ansimagenta", git_branch))
         if git_status:
-            prompt_parts.append(f"{yellow}{git_status}{reset}")
-    prompt_parts.append(f"{green}$ {reset}")
+            parts.append(("ansiyellow", git_status))
+    
+    parts.append(("ansigreen", " $ "))
 
-    return "".join(prompt_parts)
+    return FormattedText(parts)
 
 
 class BashCompleter(Completer):
@@ -278,7 +274,6 @@ class TerminalApp:
                     "completion-menu.completion.current": "bg:#00aaaa #000000",
                     "scrollbar.background": "bg:#88aaaa",
                     "scrollbar.button": "bg:#222222",
-                    "prompt": "ansicyan",
                 }
             ),
             complete_while_typing=True,  # Show completions while typing
