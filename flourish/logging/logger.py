@@ -46,13 +46,13 @@ def initialize_session_log() -> Path:
 
     # Set up both loggers
     conversation_logger = _setup_conversation_logger()
-    terminal_logger = _setup_terminal_logger()
+    _setup_terminal_logger()  # Initialize terminal logger
 
     # Log session start in conversation log
     session_start = {
         "timestamp": datetime.now().isoformat(),
         "event": "session_start",
-            "message": "Flourish session started",
+        "message": "Flourish session started",
     }
 
     conversation_logger.info(json.dumps(session_start))
@@ -66,7 +66,7 @@ def _setup_conversation_logger() -> logging.Logger:
     Returns:
         Configured logger instance for conversations.
     """
-    global _conversation_logger, _conversation_log_file
+    global _conversation_logger, _conversation_log_file, _session_dir
 
     # Return existing logger if already set up
     if _conversation_logger is not None and _conversation_logger.handlers:
@@ -110,7 +110,7 @@ def _setup_terminal_logger() -> logging.Logger:
     Returns:
         Configured logger instance for terminal output.
     """
-    global _terminal_logger, _terminal_log_file
+    global _terminal_logger, _terminal_log_file, _session_dir
 
     # Return existing logger if already set up
     if _terminal_logger is not None and _terminal_logger.handlers:
@@ -303,7 +303,7 @@ def log_session_end() -> None:
     session_end = {
         "timestamp": datetime.now().isoformat(),
         "event": "session_end",
-            "message": "Flourish session ended",
+        "message": "Flourish session ended",
     }
 
     logger.info(json.dumps(session_end))
