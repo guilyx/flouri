@@ -1,5 +1,6 @@
 """System information skill."""
 
+import time
 from typing import Any
 
 from ...logging import log_tool_call
@@ -36,6 +37,7 @@ class GetCurrentDatetimeTool(Tool):
         """
         from datetime import datetime, timezone
 
+        t0 = time.perf_counter()
         # Use timezone.utc for Python 3.10+ compatibility (UTC alias requires 3.11+)
         now = datetime.now(timezone.utc)  # noqa: UP017
         local_now = datetime.now()
@@ -50,7 +52,10 @@ class GetCurrentDatetimeTool(Tool):
             "utc_datetime": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
         }
 
-        log_tool_call("get_current_datetime", {}, result, success=True)
+        log_tool_call(
+            "get_current_datetime", {}, result, success=True,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
 
 

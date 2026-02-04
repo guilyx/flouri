@@ -1,5 +1,6 @@
 """Configuration and allowlist/blacklist management tools."""
 
+import time
 from google.adk.tools import ToolContext
 
 from ...logging import log_tool_call
@@ -28,7 +29,7 @@ def add_to_allowlist(command: str, tool_context: ToolContext | None = None) -> d
     Returns:
         A dictionary with status, message, and updated allowlist.
     """
-
+    t0 = time.perf_counter()
     # Add to allowlist
     if globals_module.GLOBAL_ALLOWLIST is None:
         globals_module.GLOBAL_ALLOWLIST = []
@@ -48,7 +49,10 @@ def add_to_allowlist(command: str, tool_context: ToolContext | None = None) -> d
         "message": f"Added '{command}' to allowlist",
         "allowlist": globals_module.GLOBAL_ALLOWLIST.copy(),
     }
-    log_tool_call("add_to_allowlist", {"command": command}, result, success=True)
+    log_tool_call(
+        "add_to_allowlist", {"command": command}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -63,7 +67,7 @@ def remove_from_allowlist(command: str, tool_context: ToolContext | None = None)
     Returns:
         A dictionary with status and message.
     """
-
+    t0 = time.perf_counter()
     # Remove from allowlist
     if globals_module.GLOBAL_ALLOWLIST and command in globals_module.GLOBAL_ALLOWLIST:
         globals_module.GLOBAL_ALLOWLIST.remove(command)
@@ -83,7 +87,10 @@ def remove_from_allowlist(command: str, tool_context: ToolContext | None = None)
             globals_module.GLOBAL_ALLOWLIST.copy() if globals_module.GLOBAL_ALLOWLIST else []
         ),
     }
-    log_tool_call("remove_from_allowlist", {"command": command}, result, success=True)
+    log_tool_call(
+        "remove_from_allowlist", {"command": command}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -110,7 +117,7 @@ def add_to_blacklist(command: str, tool_context: ToolContext | None = None) -> d
     Returns:
         A dictionary with status, message, and updated blacklist.
     """
-
+    t0 = time.perf_counter()
     # Add to blacklist
     if globals_module.GLOBAL_BLACKLIST is None:
         globals_module.GLOBAL_BLACKLIST = []
@@ -130,7 +137,10 @@ def add_to_blacklist(command: str, tool_context: ToolContext | None = None) -> d
         "message": f"Added '{command}' to blacklist",
         "blacklist": globals_module.GLOBAL_BLACKLIST.copy(),
     }
-    log_tool_call("add_to_blacklist", {"command": command}, result, success=True)
+    log_tool_call(
+        "add_to_blacklist", {"command": command}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -145,7 +155,7 @@ def remove_from_blacklist(command: str, tool_context: ToolContext | None = None)
     Returns:
         A dictionary with status and message.
     """
-
+    t0 = time.perf_counter()
     # Remove from blacklist
     if globals_module.GLOBAL_BLACKLIST and command in globals_module.GLOBAL_BLACKLIST:
         globals_module.GLOBAL_BLACKLIST.remove(command)
@@ -165,7 +175,10 @@ def remove_from_blacklist(command: str, tool_context: ToolContext | None = None)
             globals_module.GLOBAL_BLACKLIST.copy() if globals_module.GLOBAL_BLACKLIST else []
         ),
     }
-    log_tool_call("remove_from_blacklist", {"command": command}, result, success=True)
+    log_tool_call(
+        "remove_from_blacklist", {"command": command}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -176,7 +189,7 @@ def list_allowlist() -> dict:
     Returns:
         A dictionary with status and the current allowlist.
     """
-
+    t0 = time.perf_counter()
     result = {
         "status": "success",
         "allowlist": (
@@ -184,7 +197,10 @@ def list_allowlist() -> dict:
         ),
         "count": len(globals_module.GLOBAL_ALLOWLIST) if globals_module.GLOBAL_ALLOWLIST else 0,
     }
-    log_tool_call("list_allowlist", {}, result, success=True)
+    log_tool_call(
+        "list_allowlist", {}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -195,7 +211,7 @@ def list_blacklist() -> dict:
     Returns:
         A dictionary with status and the current blacklist.
     """
-
+    t0 = time.perf_counter()
     result = {
         "status": "success",
         "blacklist": (
@@ -203,7 +219,10 @@ def list_blacklist() -> dict:
         ),
         "count": len(globals_module.GLOBAL_BLACKLIST) if globals_module.GLOBAL_BLACKLIST else 0,
     }
-    log_tool_call("list_blacklist", {}, result, success=True)
+    log_tool_call(
+        "list_blacklist", {}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -220,7 +239,7 @@ def is_in_allowlist(command: str) -> dict:
     Returns:
         A dictionary with status, whether the command is in the allowlist, and the matched entry if found.
     """
-
+    t0 = time.perf_counter()
     # Extract base command
     cmd_parts = command.strip().split()
     if not cmd_parts:
@@ -229,7 +248,10 @@ def is_in_allowlist(command: str) -> dict:
             "message": "Empty command",
             "in_allowlist": False,
         }
-        log_tool_call("is_in_allowlist", {"command": command}, result, success=False)
+        log_tool_call(
+            "is_in_allowlist", {"command": command}, result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
 
     base_cmd = cmd_parts[0]
@@ -252,7 +274,10 @@ def is_in_allowlist(command: str) -> dict:
         "in_allowlist": in_allowlist,
         "matched_entry": matched_entry,
     }
-    log_tool_call("is_in_allowlist", {"command": command}, result, success=True)
+    log_tool_call(
+        "is_in_allowlist", {"command": command}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -269,7 +294,7 @@ def is_in_blacklist(command: str) -> dict:
     Returns:
         A dictionary with status, whether the command is in the blacklist, and the matched entry if found.
     """
-
+    t0 = time.perf_counter()
     # Extract base command
     cmd_parts = command.strip().split()
     if not cmd_parts:
@@ -278,7 +303,10 @@ def is_in_blacklist(command: str) -> dict:
             "message": "Empty command",
             "in_blacklist": False,
         }
-        log_tool_call("is_in_blacklist", {"command": command}, result, success=False)
+        log_tool_call(
+            "is_in_blacklist", {"command": command}, result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
 
     base_cmd = cmd_parts[0]
@@ -301,5 +329,8 @@ def is_in_blacklist(command: str) -> dict:
         "in_blacklist": in_blacklist,
         "matched_entry": matched_entry,
     }
-    log_tool_call("is_in_blacklist", {"command": command}, result, success=True)
+    log_tool_call(
+        "is_in_blacklist", {"command": command}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
