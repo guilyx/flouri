@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,7 @@ def get_user() -> dict[str, Any]:
     Returns:
         A dictionary with username, home directory, and current working directory.
     """
+    t0 = time.perf_counter()
     # Get username using whoami command
     username_result = execute_bash("whoami")
     username = (
@@ -50,7 +52,9 @@ def get_user() -> dict[str, Any]:
         "home_directory": home_dir,
         "current_working_directory": current_dir,
     }
-    log_tool_call("get_user", {}, result, success=True)
+    log_tool_call(
+        "get_user", {}, result, success=True, duration_seconds=time.perf_counter() - t0
+    )
     return result
 
 
@@ -64,14 +68,21 @@ def set_cwd(path: str) -> str:
     Returns:
         A confirmation message.
     """
+    t0 = time.perf_counter()
     if not os.path.isdir(path):
         error_msg = f"Invalid directory: {path}"
-        log_tool_call("set_cwd", {"path": path}, error_msg, success=False)
+        log_tool_call(
+            "set_cwd", {"path": path}, error_msg, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         raise ValueError(error_msg)
 
     globals_module.GLOBAL_CWD = path
     result = f"Working directory set to: {globals_module.GLOBAL_CWD}"
-    log_tool_call("set_cwd", {"path": path}, result, success=True)
+    log_tool_call(
+        "set_cwd", {"path": path}, result, success=True,
+        duration_seconds=time.perf_counter() - t0,
+    )
     return result
 
 
@@ -89,6 +100,7 @@ def execute_bash(cmd: str, tool_context: ToolContext | None = None) -> dict:
     Returns:
         A dictionary with status and output from the command execution.
     """
+    t0 = time.perf_counter()
     # Extract base command for checking
     cmd_parts = cmd.strip().split()
     if not cmd_parts:
@@ -105,7 +117,10 @@ def execute_bash(cmd: str, tool_context: ToolContext | None = None) -> dict:
                     "status": "blocked",
                     "message": f"Command '{base_cmd}' is blacklisted and cannot be executed",
                 }
-                log_tool_call("execute_bash", {"cmd": cmd}, blocked_result, success=False)
+                log_tool_call(
+                    "execute_bash", {"cmd": cmd}, blocked_result, success=False,
+                    duration_seconds=time.perf_counter() - t0,
+                )
                 return blocked_result
 
     # Check if command is in allowlist (only after blacklist check passes)
@@ -142,7 +157,10 @@ def execute_bash(cmd: str, tool_context: ToolContext | None = None) -> dict:
                     "status": "blocked",
                     "message": f"Command '{base_cmd}' is blacklisted and cannot be executed",
                 }
-                log_tool_call("execute_bash", {"cmd": cmd}, final_blocked_result, success=False)
+                log_tool_call(
+                    "execute_bash", {"cmd": cmd}, final_blocked_result, success=False,
+                    duration_seconds=time.perf_counter() - t0,
+                )
                 return final_blocked_result
 
     # Execute the command
@@ -171,6 +189,7 @@ def execute_bash(cmd: str, tool_context: ToolContext | None = None) -> dict:
             {"cmd": cmd, "cwd": str(globals_module.GLOBAL_CWD)},
             result,
             success=(process.returncode == 0),
+            duration_seconds=time.perf_counter() - t0,
         )
 
         # Log terminal output to terminal log
@@ -190,7 +209,10 @@ def execute_bash(cmd: str, tool_context: ToolContext | None = None) -> dict:
             "cmd": cmd,
         }
         # Log tool call to conversation log
-        log_tool_call("execute_bash", {"cmd": cmd}, error_result, success=False)
+        log_tool_call(
+            "execute_bash", {"cmd": cmd}, error_result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         # Log terminal error to terminal log
         log_terminal_error(command=cmd, error=str(e), cwd=str(globals_module.GLOBAL_CWD))
         return error_result

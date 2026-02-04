@@ -1,6 +1,7 @@
 """ROS2 CLI tools for interacting with ROS2 systems."""
 
 import subprocess
+import time
 from typing import Any
 
 from google.adk.tools import ToolContext
@@ -27,6 +28,7 @@ def _execute_ros2_command(
         cmd_parts.extend(args)
 
     cmd = " ".join(cmd_parts)
+    t0 = time.perf_counter()
 
     try:
         process = subprocess.Popen(
@@ -38,6 +40,7 @@ def _execute_ros2_command(
             cwd=globals_module.GLOBAL_CWD,
         )
         stdout, stderr = process.communicate()
+        duration_seconds = time.perf_counter() - t0
 
         result: dict[str, Any] = {
             "status": "success" if process.returncode == 0 else "error",
@@ -52,10 +55,12 @@ def _execute_ros2_command(
             {"command": cmd},
             result,
             success=(process.returncode == 0),
+            duration_seconds=duration_seconds,
         )
 
         return result
     except Exception as e:
+        duration_seconds = time.perf_counter() - t0
         error_result = {
             "status": "error",
             "message": f"Error executing ROS2 command: {e}",
@@ -66,6 +71,64 @@ def _execute_ros2_command(
             {"command": cmd},
             error_result,
             success=False,
+            duration_seconds=duration_seconds,
+        )
+        return error_result
+
+
+def _execute_ros2_command_streaming(
+    subcommand: str, args: list[str] | None = None, tool_name: str = ""
+) -> dict[str, Any]:
+    """Execute a ROS2 command with stdout/stderr streamed to the terminal (no capture).
+
+    Use for long-running commands (e.g. bag record, bag play) so the user sees
+    live output. Returns when the process exits.
+    """
+    cmd_parts = ["ros2", subcommand]
+    if args:
+        cmd_parts.extend(args)
+    cmd = " ".join(cmd_parts)
+    t0 = time.perf_counter()
+
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=None,
+            stderr=None,
+            shell=True,
+            cwd=globals_module.GLOBAL_CWD,
+        )
+        process.wait()
+        duration_seconds = time.perf_counter() - t0
+
+        result: dict[str, Any] = {
+            "status": "success" if process.returncode == 0 else "error",
+            "stdout": "(output streamed to terminal)",
+            "stderr": "(output streamed to terminal)",
+            "exit_code": process.returncode,
+            "command": cmd,
+        }
+        log_tool_call(
+            tool_name or f"ros2_{subcommand}",
+            {"command": cmd},
+            result,
+            success=(process.returncode == 0),
+            duration_seconds=duration_seconds,
+        )
+        return result
+    except Exception as e:
+        duration_seconds = time.perf_counter() - t0
+        error_result = {
+            "status": "error",
+            "message": f"Error executing ROS2 command: {e}",
+            "command": cmd,
+        }
+        log_tool_call(
+            tool_name or f"ros2_{subcommand}",
+            {"command": cmd},
+            error_result,
+            success=False,
+            duration_seconds=duration_seconds,
         )
         return error_result
 
@@ -353,6 +416,10 @@ def ros2_bag_record(
     """
     Record ROS2 topics to a bag file.
 
+    Output is streamed to the terminal so you see recording progress. Recording
+    runs until stopped (e.g. Ctrl+C). The returned result includes the exact
+    command and a short summary for user feedback.
+
     Args:
         output_path: Directory path for the output bag (e.g. "my_bag" or "/path/to/my_bag").
         topics: List of topic names to record. Ignored if record_all is True.
@@ -361,7 +428,7 @@ def ros2_bag_record(
         tool_context: Tool context (ignored, kept for compatibility).
 
     Returns:
-        A dictionary with status and command output.
+        A dictionary with status, command, output_path, summary message, and exit info.
     """
     args = ["-o", output_path]
     if storage_id:
@@ -370,7 +437,34 @@ def ros2_bag_record(
         args.append("-a")
     elif topics:
         args.extend(topics)
-    return _execute_ros2_command("bag", ["record"] + args, "ros2_bag_record")
+
+    cmd_parts = ["ros2", "bag", "record"] + args
+    command = " ".join(cmd_parts)
+
+    if record_all:
+        recording_summary = "all topics"
+    elif topics:
+        recording_summary = ", ".join(topics)
+    else:
+        recording_summary = "(no topics specified; use topics=... or record_all=True)"
+
+    user_message = (
+        f"Recording to: {output_path}\n"
+        f"Recording: {recording_summary}\n"
+        f"Command: {command}\n"
+        "Output is streamed below. Stop recording with Ctrl+C."
+    )
+
+    # Show user feedback immediately when recording starts
+    print(user_message, flush=True)
+
+    result = _execute_ros2_command_streaming(
+        "bag", ["record"] + args, "ros2_bag_record"
+    )
+    result["output_path"] = output_path
+    result["recording_summary"] = recording_summary
+    result["message"] = user_message
+    return result
 
 
 def ros2_bag_play(
@@ -384,6 +478,10 @@ def ros2_bag_play(
     """
     Play back a ROS2 bag file.
 
+    Output is streamed to the terminal. Playback runs until the bag ends
+    (or loop). The returned result includes the exact command and a short
+    summary for user feedback.
+
     Args:
         bag_path: Path to the bag directory or bag file.
         rate: Playback rate multiplier (e.g. 1.0 = realtime, 2.0 = double speed).
@@ -393,7 +491,7 @@ def ros2_bag_play(
         tool_context: Tool context (ignored, kept for compatibility).
 
     Returns:
-        A dictionary with status and command output.
+        A dictionary with status, command, message, and exit info.
     """
     args = [bag_path]
     if rate is not None:
@@ -404,7 +502,37 @@ def ros2_bag_play(
         args.extend(["--start-offset", str(start_offset)])
     if delay is not None:
         args.extend(["--delay", str(delay)])
-    return _execute_ros2_command("bag", ["play"] + args, "ros2_bag_play")
+
+    cmd_parts = ["ros2", "bag", "play"] + args
+    command = " ".join(cmd_parts)
+
+    opts = []
+    if rate is not None:
+        opts.append(f"rate={rate}")
+    if loop:
+        opts.append("loop")
+    if start_offset is not None:
+        opts.append(f"start_offset={start_offset}s")
+    if delay is not None:
+        opts.append(f"delay={delay}s")
+    options_str = ", ".join(opts) if opts else "defaults"
+
+    user_message = (
+        f"Playing bag: {bag_path}\n"
+        f"Options: {options_str}\n"
+        f"Command: {command}\n"
+        "Output is streamed below."
+    )
+
+    # Show user feedback immediately when playback starts
+    print(user_message, flush=True)
+
+    result = _execute_ros2_command_streaming(
+        "bag", ["play"] + args, "ros2_bag_play"
+    )
+    result["bag_path"] = bag_path
+    result["message"] = user_message
+    return result
 
 
 def ros2_bag_info(bag_path: str, tool_context: ToolContext | None = None) -> dict[str, Any]:

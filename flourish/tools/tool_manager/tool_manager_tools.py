@@ -1,5 +1,6 @@
 """Tool manager tools for managing enabled tools (via skills)."""
 
+import time
 from typing import Any
 
 from google.adk.tools import ToolContext
@@ -24,6 +25,7 @@ def get_available_tools() -> dict[str, Any]:
     Returns:
         A dictionary with status and list of available tools with their descriptions.
     """
+    t0 = time.perf_counter()
     try:
         from ..registry import get_registry
 
@@ -38,7 +40,10 @@ def get_available_tools() -> dict[str, Any]:
             "available_tools": available_tools,
             "count": len(available_tools),
         }
-        log_tool_call("get_available_tools", {}, result, success=True)
+        log_tool_call(
+            "get_available_tools", {}, result, success=True,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
     except Exception as e:
         # Fallback to empty dict if registry fails
@@ -48,7 +53,10 @@ def get_available_tools() -> dict[str, Any]:
             "available_tools": {},
             "count": 0,
         }
-        log_tool_call("get_available_tools", {}, result, success=False)
+        log_tool_call(
+            "get_available_tools", {}, result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
 
 
@@ -59,6 +67,7 @@ def list_enabled_tools(tool_context: ToolContext | None = None) -> dict[str, Any
     Returns:
         A dictionary with status and list of enabled tools.
     """
+    t0 = time.perf_counter()
     try:
         enabled_tools = _get_enabled_tool_names()
 
@@ -67,14 +76,20 @@ def list_enabled_tools(tool_context: ToolContext | None = None) -> dict[str, Any
             "enabled_tools": enabled_tools,
             "count": len(enabled_tools),
         }
-        log_tool_call("list_enabled_tools", {}, result, success=True)
+        log_tool_call(
+            "list_enabled_tools", {}, result, success=True,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
     except Exception as e:
         result = {
             "status": "error",
             "message": f"Failed to list enabled tools: {e}",
         }
-        log_tool_call("list_enabled_tools", {}, result, success=False)
+        log_tool_call(
+            "list_enabled_tools", {}, result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
 
 
@@ -89,6 +104,7 @@ def enable_tool(tool_name: str, tool_context: ToolContext | None = None) -> dict
     Returns:
         A dictionary with status, message, and updated enabled tools list.
     """
+    t0 = time.perf_counter()
     try:
         from ..registry import get_registry
 
@@ -99,7 +115,10 @@ def enable_tool(tool_name: str, tool_context: ToolContext | None = None) -> dict
                 "status": "error",
                 "message": f"Unknown tool '{tool_name}'",
             }
-            log_tool_call("enable_tool", {"tool_name": tool_name}, result, success=False)
+            log_tool_call(
+                "enable_tool", {"tool_name": tool_name}, result, success=False,
+                duration_seconds=time.perf_counter() - t0,
+            )
             return result
 
         config_manager = ConfigManager()
@@ -111,14 +130,20 @@ def enable_tool(tool_name: str, tool_context: ToolContext | None = None) -> dict
             "message": f"Tool '{tool_name}' enabled (skill '{skill_name}')",
             "enabled_tools": enabled_tools,
         }
-        log_tool_call("enable_tool", {"tool_name": tool_name}, result, success=True)
+        log_tool_call(
+            "enable_tool", {"tool_name": tool_name}, result, success=True,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
     except Exception as e:
         result = {
             "status": "error",
             "message": f"Failed to enable tool '{tool_name}': {e}",
         }
-        log_tool_call("enable_tool", {"tool_name": tool_name}, result, success=False)
+        log_tool_call(
+            "enable_tool", {"tool_name": tool_name}, result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
 
 
@@ -133,6 +158,7 @@ def disable_tool(tool_name: str, tool_context: ToolContext | None = None) -> dic
     Returns:
         A dictionary with status, message, and updated enabled tools list.
     """
+    t0 = time.perf_counter()
     try:
         from ..registry import get_registry
 
@@ -143,7 +169,10 @@ def disable_tool(tool_name: str, tool_context: ToolContext | None = None) -> dic
                 "status": "error",
                 "message": f"Unknown tool '{tool_name}'",
             }
-            log_tool_call("disable_tool", {"tool_name": tool_name}, result, success=False)
+            log_tool_call(
+                "disable_tool", {"tool_name": tool_name}, result, success=False,
+                duration_seconds=time.perf_counter() - t0,
+            )
             return result
 
         config_manager = ConfigManager()
@@ -155,12 +184,18 @@ def disable_tool(tool_name: str, tool_context: ToolContext | None = None) -> dic
             "message": f"Tool '{tool_name}' disabled (skill '{skill_name}')",
             "enabled_tools": enabled_tools,
         }
-        log_tool_call("disable_tool", {"tool_name": tool_name}, result, success=True)
+        log_tool_call(
+            "disable_tool", {"tool_name": tool_name}, result, success=True,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
     except Exception as e:
         result = {
             "status": "error",
             "message": f"Failed to disable tool '{tool_name}': {e}",
         }
-        log_tool_call("disable_tool", {"tool_name": tool_name}, result, success=False)
+        log_tool_call(
+            "disable_tool", {"tool_name": tool_name}, result, success=False,
+            duration_seconds=time.perf_counter() - t0,
+        )
         return result
