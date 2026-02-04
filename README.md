@@ -6,6 +6,9 @@
 [![Linting: ruff](https://img.shields.io/badge/linting-ruff-yellow.svg)](https://github.com/astral-sh/ruff)
 [![CI](https://github.com/guilyx/flouri/actions/workflows/ci.yml/badge.svg)](https://github.com/guilyx/flouri/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/guilyx/flourish/graph/badge.svg?token=LLS960LIGU)](https://codecov.io/gh/guilyx/flourish)
+[![PyPI version](https://img.shields.io/pypi/v/flouri.svg)](https://pypi.org/project/flouri/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/flouri)](https://pypi.org/project/flouri/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/flouri.svg)](https://pypi.org/project/flouri/)
 
 ```bash
 ╔═════════════════════════════════════════════════════════════════════╗
