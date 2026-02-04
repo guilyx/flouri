@@ -153,6 +153,7 @@ def log_tool_call(
     parameters: dict[str, Any],
     result: Any,
     success: bool = True,
+    duration_seconds: float | None = None,
 ) -> None:
     """Log a tool call to the conversation log file.
 
@@ -161,6 +162,7 @@ def log_tool_call(
         parameters: Dictionary of parameters passed to the tool
         result: Result returned by the tool (will be converted to string)
         success: Whether the tool call was successful
+        duration_seconds: Optional run time in seconds (for analytics)
     """
     logger = _setup_conversation_logger()
 
@@ -169,7 +171,7 @@ def log_tool_call(
     if len(result_str) > 1000:
         result_str = result_str[:1000] + "... [truncated]"
 
-    log_entry = {
+    log_entry: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "event": "tool_call",
         "tool": tool_name,
@@ -177,6 +179,8 @@ def log_tool_call(
         "result": result_str,
         "success": success,
     }
+    if duration_seconds is not None:
+        log_entry["duration_seconds"] = round(duration_seconds, 4)
 
     # Log as JSON for easy parsing
     try:
